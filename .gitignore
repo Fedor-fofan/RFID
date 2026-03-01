@@ -1,0 +1,10 @@
+*.jou
+*.log
+*.str
+*.wdb
+*.backup
+*.sim
+*.hw
+*.runs
+*.ip_user_files
+*.xpr.lock
