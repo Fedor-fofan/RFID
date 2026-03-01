@@ -8,3 +8,7 @@
 *.runs
 *.ip_user_files
 *.xpr.lock
+*.xpr
+*.wdf
+*.wpc
+*.xml
