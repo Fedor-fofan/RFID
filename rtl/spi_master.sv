@@ -4,123 +4,90 @@ module spi_master(
 
     input logic [7:0] spi_tx_data,
     input logic spi_tx_valid,
-    output logic spi_tx_ready,
-
+    output wire spi_tx_ready,
 
     output logic [7:0] spi_rx_data,
-    input logic spi_rx_ready, 
-    output logic spi_rx_valid, 
+    output wire spi_rx_valid, 
+    input wire spi_rx_ready, 
 
-    input logic spi_start,
+    input wire spi_start,
     input logic spi_last,
-    output logic spi_busy,
-    output logic spi_done,
+    output wire spi_busy,
+    output wire spi_done,
 
     output logic spi_mosi, 
-    input logic spi_miso,
-    output logic spi_clk,
-    output logic spi_cs
+    input wire spi_miso,
+    output wire spi_clk,
+    output wire spi_cs
 );
+	logic [2:0] counter; 
+	wire spi_clk_rst;
 
-typedef enum logic [2:0] { 
-    IDLE, SPI_WAIT, SPI_SHIFT,
-    SPI_DONE
- } state_t;
-    
+	spi_clock(
+		.clk(clk&(state==SPI_SHIFT)),
+		.rst(rst|spi_clk_rst),
+		.spi_clk(spi_clk)
+	);
 
-state_t state_ff, state_nx;
+	enum logic [2:0] { 
+		IDLE, 
+		SPI_WAIT, 
+		SPI_SHIFT,
+		SPI_DONE
+	} state, next_state;
 
-logic [7:0] spi_rx_reg, spi_shift_reg; // регистры приёма, передачи и сдвиговый регистр
+	always_comb begin
+		next_state = state;
 
-logic [2:0] counter; 
-logic spi_clok;
+		spi_tx_ready = 'b0;
+		spi_rx_valid = counter==3'b7;
+		spi_busy = 'b0;
+		spi_done = 'b0;
+		spi_cs = 1'b1;
+		spi_clk_rst = 1'b0;
 
-spi_clock(
-    .clk(clk),
-    .rst(rst),
-    .spi_clk(spi_clok)
-);
+		case(state)
+			IDLE: if (spi_start) next_state = SPI_WAIT; 
+			SPI_WAIT: begin
+				spi_tx_ready = spi_tx_valid;
+				spi_cs = 1'b0;
+				spi_clk_rst = 1'b1;
 
-always_ff @(posedge clk) begin
-    if(rst) begin
-        state_ff <= IDLE;
-        spi_rx_reg <= 'b0; 
-        spi_shift_reg <= 'b0;
-        counter <= 'b0;
-    end
-    else begin
-        state_ff <= state_nx;
-    end
+				if (spi_tx_valid&spi_rx_ready) next_state = SPI_SHIFT;
+			end
+			SPI_SHIFT: begin
+				spi_tx_ready = 1'b1;
+				spi_busy = 1'b1;
+				spi_cs = 1'b0;
 
-    if(state_ff == SPI_WAIT && spi_tx_valid) begin
-        spi_shift_reg <= spi_tx_data;
-    end
-    if(state_ff == SPI_DONE) begin
-        counter <= 'b0;
+				if (counter==3'd7) next_state = spi_last ? SPI_DONE : SPI_WAIT;
+			end
+			SPI_DONE begin
+				spi_done = 1'b1;
+				spi_clk_rst = 1'b1;
 
-    end
-end
+				next_state = IDLE;
+			end
+		endcase
+	end
 
-always_ff @( posedge spi_clk ) begin
-    if(state_ff == SPI_SHIFT) begin
-        if(counter <= 3'd7) begin
-            spi_rx_reg <= {spi_rx_reg[7:1], spi_miso};
-            spi_shift_reg <= {spi_shift_reg[7:1], 1'b0};
-            counter <= counter + 1;
-        end
-    end
-end
+	always_ff @(posedge clk) begin
+		if(rst) begin
+			state <= IDLE;
+			counter <= 'b0;
+			spi_rx_valid <= 'b0;
+		end else begin
+			state <= next_state;
+			if (state!=SPI_SHIFT && counter!=0) counter <= 0;
+		end
+	end
 
-always_comb begin
-
-    spi_tx_ready = 1'b1;
-    spi_rx_valid = 1'b0;
-    spi_busy = 1'b0;
-    spi_done = 1'b0;
-    spi_cs = 1'b1;
-
-    case(state_ff)
-
-    IDLE: begin
-        if(spi_start) state_nx = SPI_WAIT; //если пришёл spi_start запускаем spi в ожидание данных
-    end 
-    
-    SPI_WAIT: begin
-            //значения по умолчанию после передачи данных
-            spi_busy = 1'b0;
-            spi_cs = 1'b1;
-            spi_tx_ready = 1'b1;
-
-        if(spi_rx_ready && spi_tx_valid) begin
-            state_nx = SPI_SHIFT;
-            spi_busy = 1'b1;
-            spi_tx_ready = 1'b0;
-            spi_cs = 1'b0;
-            spi_rx_valid = 1'b0;
-        end        
-    end
-
-    SPI_SHIFT: begin
-        if(counter == 3'd7) begin
-            spi_rx_valid = 1'b1;
-            state_nx = SPI_DONE;
-        end
-    end
-
-    SPI_DONE: begin
-        spi_cs = 1'b1;
-        spi_busy = 1'b0;
-        spi_tx_ready = 1'b1;
-        spi_done = 1'b1;
-
-        if(spi_last) state_nx = IDLE;
-        else state_nx = SPI_WAIT;
-    end
-
-    endcase
-end
-
-assign spi_mosi = spi_shift_reg[7];
-assign spi_rx_data = spi_rx_reg;
+	always_ff @( posedge spi_clk ) begin
+		if (state==SPI_SHIFT && counter<3'd7) begin
+			{spi_mosi, spi_tx_data} <= {spi_tx_data, spi_rx_data[7]};
+			spi_rx_data <= {spi_rx_data[6:0],spi_miso};
+			counter <= counter + 1;
+		end
+	end
 
 endmodule
