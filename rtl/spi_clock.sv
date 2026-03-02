@@ -3,7 +3,7 @@ module spi_clock #(
 ) (
     input clk,
     input rst,
-    logic spi_clk
+    output logic spi_clk
 );
     
 	logic [$clog2(divider)-1:0] counter;
