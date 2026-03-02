@@ -3,20 +3,20 @@ module spi_clock #(
 ) (
     input clk,
     input rst,
-    output spi_clk
+    logic spi_clk
 );
     
-logic [$clog2(divider)-1:0] counter;
+	logic [$clog2(divider)-1:0] counter;
 
-always_ff @( posedge clk ) begin 
-    if(rst) begin
-        counter <= 'b0;
-    end
-    else begin
-        counter <= counter + 1;
-    end
-end
-
-assign spi_clk = (counter == divider);
+	always_ff @( posedge clk ) begin 
+		if(rst) begin
+			counter <= 'b0;
+			spi_clk <= 'b0;
+		end
+		else begin
+			counter <= counter + 1;
+			if (&counter) spi_clk <= ~spi_clk;
+		end
+	end
 
 endmodule
