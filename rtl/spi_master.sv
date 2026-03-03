@@ -64,8 +64,8 @@ end
 always_ff @( posedge spi_clk ) begin
     if(state_ff == SPI_SHIFT) begin
         if(counter <= 3'd7) begin
-            spi_rx_reg <= {spi_rx_reg[7:1], spi_miso};
-            spi_shift_reg <= {spi_shift_reg[7:1], 1'b0};
+            spi_rx_reg <= {spi_rx_reg[6:0], spi_miso};
+            spi_shift_reg <= {spi_shift_reg[6:0], 1'b0};
             counter <= counter + 1;
         end
     end
