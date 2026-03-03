@@ -1,6 +1,6 @@
 module spi_master(
-    input clk,
-    input rst,
+    input logic clk,
+    input logic rst,
 
     input logic [7:0] spi_tx_data,
     input logic spi_tx_valid,
@@ -30,7 +30,7 @@ typedef enum logic [2:0] {
 
 state_t state_ff, state_nx;
 
-logic [7:0] spi_rx_reg, spi_shift_reg; // регистры приёма, передачи и сдвиговый регистр
+logic [7:0] spi_rx_reg, spi_shift_reg;
 
 logic [2:0] counter; 
 logic spi_clok;
@@ -72,7 +72,8 @@ always_ff @( posedge spi_clk ) begin
 end
 
 always_comb begin
-
+    //default values
+    state_nx = state_ff;
     spi_tx_ready = 1'b1;
     spi_rx_valid = 1'b0;
     spi_busy = 1'b0;
@@ -82,39 +83,35 @@ always_comb begin
     case(state_ff)
 
     IDLE: begin
-        if(spi_start) state_nx = SPI_WAIT; //если пришёл spi_start запускаем spi в ожидание данных
+        if(spi_start) state_nx = SPI_WAIT; 
     end 
     
     SPI_WAIT: begin
-            //значения по умолчанию после передачи данных
-            spi_busy = 1'b0;
-            spi_cs = 1'b1;
-            spi_tx_ready = 1'b1;
 
-        if(spi_rx_ready && spi_tx_valid) begin
+        if(spi_tx_valid) begin // first handshake when submitting valid data for tx
             state_nx = SPI_SHIFT;
-            spi_busy = 1'b1;
-            spi_tx_ready = 1'b0;
-            spi_cs = 1'b0;
-            spi_rx_valid = 1'b0;
         end        
     end
 
     SPI_SHIFT: begin
-        if(counter == 3'd7) begin
-            spi_rx_valid = 1'b1;
+        // while master is busy
+            spi_busy = 1'b1;
+            spi_tx_ready = 1'b0;
+            spi_cs = 1'b0;
+
+        if(counter >= 3'd7) begin
             state_nx = SPI_DONE;
         end
     end
 
     SPI_DONE: begin
-        spi_cs = 1'b1;
-        spi_busy = 1'b0;
-        spi_tx_ready = 1'b1;
-        spi_done = 1'b1;
 
-        if(spi_last) state_nx = IDLE;
-        else state_nx = SPI_WAIT;
+        spi_done = 1'b1;
+        spi_rx_valid = 1'b1;
+        if(spi_rx_ready) begin // second handshake when ready to recieve data
+            if(spi_last) state_nx = IDLE;
+            else state_nx = SPI_WAIT;
+        end
     end
 
     endcase
