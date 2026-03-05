@@ -31,7 +31,7 @@ logic spi_cs; \\chip select
 spi_master dut(
 .clk            (clk),
 .spi_tx_data    (spi_tx_data),
-.spi_tx_valid    spi_tx_valid),
+.spi_tx_valid   (spi_tx_valid),
 .spi_tx_ready   (spi_tx_ready),
 .spi_rx_data    (spi_rx_data),
 .spi_rx_valid   (spi_rx_valid),
