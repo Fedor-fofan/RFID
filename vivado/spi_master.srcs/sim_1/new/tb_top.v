@@ -23,7 +23,7 @@ module tb_spi_master;
     logic spi_clk;
     logic spi_cs;
 
-    // РїРѕРґРєР»СЋС‡Р°РµРј SPI master
+    // подключаем SPI master
     spi_master uut(
         .clk(clk),
         .rst(rst),
@@ -46,21 +46,21 @@ module tb_spi_master;
     // Clock generation
     always #5 clk <= ~clk; // 100MHz
 
-    // РњРѕРґРµР»РёСЂСѓРµРј SPI slave
+    // Моделируем SPI slave
     always @(posedge spi_clk) begin
         if(uut.state_ff == uut.SPI_SHIFT) begin
-            // РїСЂРѕСЃС‚Рѕ Р·РµСЂРєР°Р»РёРј MOSI РІ MISO РґР»СЏ С‚РµСЃС‚Р°
+            // просто зеркалим MOSI в MISO для теста
             spi_miso <= spi_mosi;
         end
     end
 
     initial begin
-        // РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ
+        // инициализация
         clk <= 0;
         rst <= 1;
         spi_tx_data <= 8'hAA;
         spi_tx_valid <= 0;
-        spi_rx_ready <= 1; // РіРѕС‚РѕРІ РїСЂРёРЅРёРјР°С‚СЊ
+        spi_rx_ready <= 1; // готов принимать
         spi_start <= 0;
         spi_last <= 1;
         spi_miso <= 0;
@@ -68,17 +68,17 @@ module tb_spi_master;
         #20;
         rst <= 0;
 
-        // РїРµСЂРІС‹Р№ С‚РµСЃС‚: РѕС‚РїСЂР°РІР»СЏРµРј Р±Р°Р№С‚
+        // первый тест: отправляем байт
         #10;
         spi_tx_valid <= 1;
         spi_start <= 1;
         #10;
         spi_start <= 0;
 
-        wait(spi_done) #20; // Р¶РґС‘Рј РѕРєРѕРЅС‡Р°РЅРёСЏ РїРµСЂРµРґР°С‡Рё
+        wait(spi_done) #20; // ждём окончания передачи
         $display("Test 1: SPI RX = %h (should match TX)", spi_rx_data);
 
-        // РІС‚РѕСЂРѕР№ С‚РµСЃС‚: РґСЂСѓРіРѕР№ Р±Р°Р№С‚
+        // второй тест: другой байт
         #20;
         spi_tx_data <= 8'h5A;
         spi_tx_valid <= 1;

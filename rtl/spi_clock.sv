@@ -1,5 +1,5 @@
 module spi_clock #(
-    parameters divider = 8
+    parameter divider = 8
 ) (
     input logic clk,
     input logic rst,
