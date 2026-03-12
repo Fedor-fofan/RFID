@@ -12,4 +12,5 @@
 *.wdf
 *.wpc
 *.xml
+vivado*
 .nvim

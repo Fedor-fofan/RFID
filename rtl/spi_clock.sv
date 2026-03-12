@@ -1,5 +1,5 @@
 module spi_clock #(
-    parameters divider = 8
+    parameter divider = 8
 ) (
     input clk,
     input rst,
@@ -10,8 +10,8 @@ module spi_clock #(
 
 	always_ff @( posedge clk ) begin 
 		if(rst) begin
-			counter <= 'b0;
-			spi_clk <= 'b0;
+			counter <= '0;
+			spi_clk <= '0;
 		end
 		else begin
 			counter <= counter + 1;
